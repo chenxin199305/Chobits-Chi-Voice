@@ -1,0 +1,6 @@
+[core]
+    remote = cos
+['remote "cos"']
+    url = s3://chobits-1302548221/dvc-storage
+    endpointurl = https://cos.ap-shanghai.myqcloud.com
+    region = ap-shanghai
