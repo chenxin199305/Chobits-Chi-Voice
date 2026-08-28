@@ -16,81 +16,132 @@ pretty_name: Chobits-Chi
 
 # Chobits-Chi
 
-《人形电脑天使心》(Chobits) 中 **小叽 (Chi / ちぃ)** 角色的语音数据集,可用于语音合成 (TTS)、声音克隆等任务的训练与微调。
+《人形电脑天使心》(Chobits) 中 **小叽 (Chi / ちぃ)** 角色的语音数据集，可用于语音合成 (TTS)、声音克隆等任务的训练与微调。
 
-## 数据集简介
+本数据集从《Chobits》TV 动画全 24 话（总集篇除外）的音轨中提取角色**小叽**（CV: 田中理惠）的语音片段，经人声分离、语音识别切分、说话人嵌入分类，并经过**两轮人工标注（共 1150 条）+ 最终全量人工复听**筛选而成。
 
-本数据集从《Chobits》动画音轨中提取角色**小叽**(CV: 田中理惠)的语音片段,经过切分、降噪与筛选后整理而成,并配有对应的文本标注。
-
-> ⚠️ 注意:原始动画音频的版权归其权利方所有。本数据集仅供学习与研究使用,请勿用于商业用途。
-
-## 数据集结构
-
-<!-- 请根据实际目录结构修改 -->
-
-```
-Chobits-Chi/
-├── wavs/               # 音频片段
-│   ├── 000001.wav
-│   ├── 000002.wav
-│   └── ...
-└── metadata.csv        # 标注文件: 文件名|文本
-```
-
-- **音频格式**:WAV,22050 Hz,单声道(16-bit PCM)<!-- 按实际情况修改 -->
-- **标注格式**:`metadata.csv`,每行为 `文件名|文本`
+> ⚠️ 注意：原始动画音频的版权归其权利方所有。本数据集仅供学习与研究使用，请勿用于商业用途。
 
 ## 数据统计
 
-<!-- 请填写实际统计信息 -->
-
 | 项目 | 数值 |
 | --- | --- |
-| 片段数量 | - |
-| 总时长 | - |
-| 采样率 | 22050 Hz |
+| 片段数量 | 487 |
+| 总时长 | 约 21.4 分钟 |
+| 片段时长 | 中位 2.24s，平均 2.63s（0.98s – 9.05s） |
+| 采样率 | 22050 Hz，单声道，16-bit PCM |
 | 语言 | 日语 |
+| 覆盖范围 | TV 全 24 话（跳过总集篇 8.5/16.5/24.5） |
+
+## 数据集结构
+
+```
+dataset/
+├── wavs/                     # 音频片段, 内容寻址命名: {集数}_{起始秒}s.wav
+│   ├── ep01_01042.52s.wav
+│   └── ...
+├── metadata.csv              # TTS 标注: 文件名|文本
+├── metadata_full.csv         # 完整元信息: 文件名,集数,起止时间,分类概率,来源,文本
+└── transcripts.csv           # 全集台词索引 (8520 句): 集数,起止时间,文本,小叽概率,是否入选
+```
+
+- **标注格式**：`metadata.csv` 每行为 `文件名|文本`（GPT-SoVITS / VITS 等框架常用格式）
+- **命名规则**：`ep05_00667.42s.wav` 表示第 5 话、起始时间 667.42 秒，跨处理轮次稳定，便于溯源到原始音轨
+- **台词检索**：`transcripts.csv` 覆盖 24 话全部转写句子（OP/ED 已剔除），`grep 'ちい' dataset/transcripts.csv` 即可定位"哪一集第几秒说过某句话"；`chi_prob` 列为小叽分类概率（粗略区分说话人），`in_dataset` 标记该句是否有片段入选
 
 ## 使用方法
 
-### 加载数据集
-
 ```python
-from datasets import load_dataset
+import csv
+import soundfile as sf
 
-ds = load_dataset("chenxin199305/Chobits-Chi")
+with open("dataset/metadata.csv", encoding="utf-8") as f:
+    for line in f:
+        name, text = line.strip().split("|", 1)
+        audio, sr = sf.read(f"dataset/wavs/{name}.wav")  # sr = 22050
+        # ...
 ```
-
-### 配合 TTS 训练
-
-本数据集的目录结构兼容常见 TTS 框架(如 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)、[VITS](https://github.com/jaywalnut310/vits) 等),可直接作为训练输入或经简单转换后使用。
 
 ## 数据处理流程
 
-1. **音轨提取**:从动画视频中提取音频流
-2. **人声分离**:分离人声与背景音/BGM
-3. **语音切分**:按句子切分为独立音频片段
-4. **角色筛选**:保留小叽的语音(可借助说话人识别)
-5. **文本标注**:生成/校对每段语音对应的文本
-6. **质量过滤**:剔除过短、过长或含噪声的片段
+全部代码见 `pipeline/` 目录，流程如下：
+
+1. **音轨提取**：从视频提取音轨（`batch.py`，ffmpeg）
+2. **人声分离**：Demucs (htdemucs) 分离人声与 BGM/音效
+3. **语音识别**：Whisper (mlx-whisper, large-v3-turbo) 转写日语台词并按句切分，利用 B 站官方 OP/ED 跳过时间戳剔除片头片尾；长句用词级时间戳二次切分（1–10s）
+4. **静音过滤**：RMS/峰值阈值剔除静音与近静音片段
+5. **说话人分类**：ECAPA-TDNN (SpeechBrain, VoxCeleb) 提取说话人嵌入，用人工标注训练逻辑回归分类器（`train_classifier.py`）判别是否为小叽
+6. **人工标注**：两轮交互式标注（`label_ui.py` 浏览器工具，快捷键打标），共 1150 条，覆盖分类器边界区与低分区抽查；最终导出前对全部收录片段人工复听一遍
+7. **导出**：能量谷修剪切边、统一转 22050Hz（`finalize.py`）
+
+### 纯度说明
+
+- 最终 487 段**全部经过人工听辨确认**为小叽单人语音，不含其他角色、混合人声或明显噪声段
+- 分类器仅用于挑选候选片段（交叉验证精确率约 91%）；最终纯度由两轮人工标注 + 全量复听保证，不依赖分类器兜底
+
+## 仓库结构
+
+```
+Chobits-Chi/
+├── README.md               # 本文件 (数据集卡片)
+├── dataset/                # 最终数据集 (见上)
+├── annotations/            # 人工标注资产
+│   ├── labels.json             # 1150 条人工标签 {文件名: chi/not_chi/mixed/bad/unsure}
+│   ├── clips.json              # 第 2 轮标注清单 (片段元信息)
+│   ├── human_labels.npz        # 标注片段的说话人嵌入
+│   ├── labeled_embeddings.npz  # 分类器正/负样本池
+│   ├── chi_lr.pkl              # 训练好的逻辑回归分类器
+│   ├── chi_reference_v5.npy    # 小叽参考向量 (确认样本均值)
+│   └── legacy/                 # 历史参考向量与中间统计
+├── pipeline/               # 处理流水线代码
+│   ├── batch.py                # 抽轨 / 人声分离 / 转写 (幂等, 产物缓存在 build/)
+│   ├── common.py               # chunk 生成与嵌入缓存
+│   ├── audio_utils.py          # 静音判定 / 词级拆分 / 能量谷切分与修剪
+│   ├── prepare_labeling.py     # 按分类器概率挑选待标注片段
+│   ├── label_ui.py             # 浏览器标注工具 (快捷键, 实时落盘)
+│   ├── embed_human_labels.py   # 标注片段嵌入
+│   ├── train_classifier.py     # 训练分类器 + 交叉验证选阈值
+│   ├── finalize.py             # 最终导出
+│   ├── build_transcript_index.py  # 生成全集台词索引 transcripts.csv
+│   └── legacy/                 # 历史迭代脚本 (round2-round8 等, 仅供考古)
+├── Chobits_Movie.dvc       # 原始视频 (DVC, 存储于腾讯云 COS)
+└── build/                  # 中间产物缓存 (不入库, 可由 pipeline 重新生成)
+```
+
+### 复现/增量处理
+
+```bash
+# 环境: Python 3.12, 依赖见 import (torch, demucs, mlx-whisper, speechbrain, ...)
+
+# 1. 原始视频: dvc pull (需配置 COS 凭据, 见 .dvc/config.local)
+# 2. 抽轨 + 分离 + 转写 (幂等, 增量处理新剧集)
+.venv/bin/python pipeline/batch.py
+# 3. 人工标注循环
+.venv/bin/python pipeline/prepare_labeling.py   # 生成待标注清单
+.venv/bin/python pipeline/label_ui.py           # 浏览器标注
+.venv/bin/python pipeline/embed_human_labels.py # 嵌入新标注
+.venv/bin/python pipeline/train_classifier.py   # 重训分类器
+# 4. 最终导出
+.venv/bin/python pipeline/finalize.py
+```
 
 ## 许可协议
 
-本数据集以 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans)(署名-非商业性使用-相同方式共享)协议发布:
+本数据集以 [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans)（署名-非商业性使用-相同方式共享）协议发布：
 
-- **署名 (BY)**:使用时须注明数据集来源。
-- **非商业性使用 (NC)**:不得将本数据集用于商业目的。
-- **相同方式共享 (SA)**:基于本数据集的衍生作品须以相同协议发布。
+- **署名 (BY)**：使用时须注明数据集来源。
+- **非商业性使用 (NC)**：不得将本数据集用于商业目的。
+- **相同方式共享 (SA)**：基于本数据集的衍生作品须以相同协议发布。
 
 ## 免责声明
 
-- 本数据集仅用于学术研究与个人学习,不构成对原作品版权的任何主张。
-- 使用本数据集训练的模型,其生成内容不得用于侵犯原作品及相关声优权益的用途。
-- 若权利方提出要求,本数据集将被下架。
+- 本数据集仅用于学术研究与个人学习，不构成对原作品版权的任何主张。
+- 使用本数据集训练的模型，其生成内容不得用于侵犯原作品及相关声优权益的用途。
+- 若权利方提出要求，本数据集将被下架。
 
 ## 引用
 
-如果您在研究中使用了本数据集,请引用:
+如果您在研究中使用了本数据集，请引用：
 
 ```bibtex
 @misc{chobits-chi,

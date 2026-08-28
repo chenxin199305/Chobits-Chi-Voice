@@ -1,2 +1,17 @@
+# 环境/缓存
 .venv
+__pycache__/
+*.pyc
+.DS_Store
+
+# 原始视频 (DVC 管理, 见 Chobits_Movie.dvc)
 /Chobits_Movie
+
+# 中间产物缓存 (约 20G, 可由 pipeline 重新生成)
+/build/
+
+# 数据集音频 (发布到 Hugging Face Hub, 不进 git)
+/dataset/wavs/
+
+# 人工标注工作目录 (临时音频, 可再生)
+/dataset/labeling/
