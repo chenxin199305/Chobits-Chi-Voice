@@ -122,7 +122,8 @@ Chobits-Chi-Voice/
 ```bash
 # 环境: Python 3.12, 依赖见 import (torch, demucs, mlx-whisper, speechbrain, ...)
 
-# 1. 原始视频: dvc pull (需配置 COS 凭据, 见 .dvc/config.local)
+# 1. 原始视频 (需配置 COS 凭据, 见 .dvc/config.local; COS 要求 virtual-host 寻址, 通过 .dvc/aws_config 指定)
+AWS_CONFIG_FILE=$PWD/.dvc/aws_config dvc pull
 # 2. 抽轨 + 分离 + 转写 (幂等, 增量处理新剧集)
 .venv/bin/python pipeline/batch.py
 # 3. 人工标注循环
