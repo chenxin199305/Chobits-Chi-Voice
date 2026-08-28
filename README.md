@@ -153,7 +153,7 @@ Chobits-Chi-Voice/
 如果您在研究中使用了本数据集，请引用：
 
 ```bibtex
-@misc{chobits-chi,
+@misc{chobits-chi-voice,
   author = {chenxin199305},
   title = {Chobits-Chi-Voice: Voice Dataset of Chi from Chobits},
   year = {2026},
