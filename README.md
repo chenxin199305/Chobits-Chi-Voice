@@ -11,14 +11,14 @@ tags:
 - anime
 task_categories:
 - text-to-speech
-pretty_name: Chobits-Chi-Voice
+pretty_name: Chobits-Chii-Voice
 ---
 
-# Chobits-Chi-Voice
+# Chobits-Chii-Voice
 
 [![Made with Love](https://img.shields.io/badge/Made%20with-Love-ff69b4.svg)](https://madewithlove.org.in)
 [![Hugging Face Dataset](https://img.shields.io/badge/%F0%9F%A4%97%20Dataset-Chobits--Chi--Voice-yellow)](https://huggingface.co/datasets/chenxin199305/Chobits-Chi-Voice)
-[![GitHub](https://img.shields.io/badge/GitHub-Chobits--Chi--Voice-181717?logo=github)](https://github.com/chenxin199305/Chobits-Chi-Voice)
+[![GitHub](https://img.shields.io/badge/GitHub-Chobits--Chi--Voice-181717?logo=github)](https://github.com/chenxin199305/Chobits-Chii-Voice)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Language: Japanese](https://img.shields.io/badge/Language-Japanese-green.svg)]()
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)]()
@@ -91,7 +91,7 @@ with open("dataset/metadata.csv", encoding="utf-8") as f:
 ## 仓库结构
 
 ```
-Chobits-Chi-Voice/
+Chobits-Chii-Voice/
 ├── README.md               # 本文件 (数据集卡片)
 ├── dataset/                # 最终数据集 (见上)
 ├── annotations/            # 人工标注资产
@@ -154,9 +154,9 @@ AWS_CONFIG_FILE=$PWD/.dvc/aws_config dvc pull
 如果您在研究中使用了本数据集，请引用：
 
 ```bibtex
-@misc{chobits-chi-voice,
+@misc{chobits-chii-voice,
   author = {chenxin199305},
-  title = {Chobits-Chi-Voice: Voice Dataset of Chi from Chobits},
+  title = {Chobits-Chii-Voice: Voice Dataset of Chi from Chobits},
   year = {2026},
   publisher = {Hugging Face},
   howpublished = {\url{https://huggingface.co/datasets/chenxin199305/Chobits-Chi-Voice}}
